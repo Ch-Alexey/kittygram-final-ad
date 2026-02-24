@@ -150,3 +150,8 @@ media/
 
 # Others
 node_modules
+
+# SSL certificates
+nginx/ssl/*.pem
+nginx/ssl/*.key
+!nginx/ssl/README.md

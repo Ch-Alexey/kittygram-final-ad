@@ -18,6 +18,8 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
+  "homepage": "/kittygram",
+  "proxy": "http://backend:8000",
   "eslintConfig": {
     "extends": [
       "react-app",
