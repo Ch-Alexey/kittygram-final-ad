@@ -6,6 +6,11 @@ services:
       - .env
     volumes:
       - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   backend:
     build:
@@ -17,10 +22,8 @@ services:
       - static:/vol/static
       - media:/vol/media
     depends_on:
-      - db
-    # Порт закрыт - доступ только через gateway
-    # ports:
-    #   - "8000:8000"
+      db:
+        condition: service_healthy
 
   frontend:
     build:
@@ -30,9 +33,6 @@ services:
       - static:/vol/static
     depends_on:
       - backend
-    # Порт закрыт - доступ только через gateway
-    # ports:
-    #   - "3001:3000"
 
   gateway:
     build:
@@ -40,11 +40,9 @@ services:
     container_name: gateway
     ports:
       - "80:80"
-      - "443:443"
     volumes:
       - static:/vol/static
       - media:/vol/media
-      - ./nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
       - backend
       - frontend

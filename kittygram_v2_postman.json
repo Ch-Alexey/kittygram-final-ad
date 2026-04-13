@@ -1,0 +1,460 @@
+{
+  "info": {
+    "name": "Kittygram v2.0 — Новые возможности",
+    "description": "Демонстрация: регистрация/аутентификация, права доступа, валидация на уровне поля и объекта.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000/api", "type": "string" },
+    { "key": "token_user1", "value": "", "type": "string" },
+    { "key": "token_user2", "value": "", "type": "string" },
+    { "key": "cat_id",     "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. Регистрация и аутентификация",
+      "item": [
+        {
+          "name": "1.1 Регистрация user1",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": "{{base_url}}/users/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user1\",\n  \"password\": \"StrongPass123!\",\n  \"email\": \"user1@example.com\"\n}"
+            },
+            "description": "Регистрируем первого пользователя через Djoser. Ожидаем 201 Created."
+          }
+        },
+        {
+          "name": "1.2 Регистрация user2",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": "{{base_url}}/users/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user2\",\n  \"password\": \"StrongPass456!\",\n  \"email\": \"user2@example.com\"\n}"
+            },
+            "description": "Регистрируем второго пользователя. Ожидаем 201 Created."
+          }
+        },
+        {
+          "name": "1.3 Получить токен user1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('token_user1', json.auth_token);",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Token received', () => pm.expect(json.auth_token).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": "{{base_url}}/auth/token/login/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user1\",\n  \"password\": \"StrongPass123!\"\n}"
+            },
+            "description": "Получаем токен user1. Токен автоматически сохраняется в переменную token_user1."
+          }
+        },
+        {
+          "name": "1.4 Получить токен user2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('token_user2', json.auth_token);",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Token received', () => pm.expect(json.auth_token).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": "{{base_url}}/auth/token/login/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user2\",\n  \"password\": \"StrongPass456!\"\n}"
+            },
+            "description": "Получаем токен user2."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Создание котов",
+      "item": [
+        {
+          "name": "2.1 user1 создаёт кота (успех)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "pm.collectionVariables.set('cat_id', json.id);",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Owner is read-only (не передаётся в запросе)', () => pm.expect(json.owner).to.exist);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key":"Content-Type","value":"application/json"},
+              {"key":"Authorization","value":"Token {{token_user1}}"}
+            ],
+            "url": "{{base_url}}/cats/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Мурзик\",\n  \"color\": \"#808080\",\n  \"birth_year\": 2022\n}"
+            },
+            "description": "user1 создаёт кота. owner проставляется автоматически из request.user. Ожидаем 201."
+          }
+        },
+        {
+          "name": "2.2 Запрос без токена → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/cats/",
+            "description": "Запрос без заголовка Authorization. Ожидаем 401 — IsAuthenticated."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Валидация поля (field-level)",
+      "item": [
+        {
+          "name": "3.1 birth_year в будущем → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "var json = pm.response.json();",
+                  "pm.test('Ошибка в поле birth_year', () => pm.expect(json.birth_year).to.exist);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key":"Content-Type","value":"application/json"},
+              {"key":"Authorization","value":"Token {{token_user1}}"}
+            ],
+            "url": "{{base_url}}/cats/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Барсик\",\n  \"color\": \"#ffffff\",\n  \"birth_year\": 2099\n}"
+            },
+            "description": "validate_birth_year: год > текущего. Ожидаем 400 с ошибкой в поле birth_year."
+          }
+        },
+        {
+          "name": "3.2 birth_year слишком ранний → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "var json = pm.response.json();",
+                  "pm.test('Ошибка в поле birth_year', () => pm.expect(json.birth_year).to.exist);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key":"Content-Type","value":"application/json"},
+              {"key":"Authorization","value":"Token {{token_user1}}"}
+            ],
+            "url": "{{base_url}}/cats/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Барсик\",\n  \"color\": \"#ffffff\",\n  \"birth_year\": 1995\n}"
+            },
+            "description": "validate_birth_year: год < 2000. Ожидаем 400."
+          }
+        },
+        {
+          "name": "3.3 Имя с маленькой буквы → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "var json = pm.response.json();",
+                  "pm.test('Ошибка в поле name', () => pm.expect(json.name).to.exist);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key":"Content-Type","value":"application/json"},
+              {"key":"Authorization","value":"Token {{token_user1}}"}
+            ],
+            "url": "{{base_url}}/cats/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"мурзик\",\n  \"color\": \"#808080\",\n  \"birth_year\": 2022\n}"
+            },
+            "description": "validate_name: имя с маленькой буквы. Ожидаем 400 с ошибкой в поле name."
+          }
+        },
+        {
+          "name": "3.4 Неизвестный hex цвет → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "var json = pm.response.json();",
+                  "pm.test('Ошибка в поле color', () => pm.expect(json.color).to.exist);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key":"Content-Type","value":"application/json"},
+              {"key":"Authorization","value":"Token {{token_user1}}"}
+            ],
+            "url": "{{base_url}}/cats/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Барсик\",\n  \"color\": \"#123456\",\n  \"birth_year\": 2022\n}"
+            },
+            "description": "Hex2NameColor: неизвестный цвет. Ожидаем 400 с ошибкой в поле color."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Валидация объекта (object-level)",
+      "item": [
+        {
+          "name": "4.1 Котёнок старше 3 лет → 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "var json = pm.response.json();",
+                  "pm.test('Ошибка non_field (объектная валидация)', () => {",
+                  "  var body = JSON.stringify(json);",
+                  "  pm.expect(body).to.include('Котёнок');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key":"Content-Type","value":"application/json"},
+              {"key":"Authorization","value":"Token {{token_user1}}"}
+            ],
+            "url": "{{base_url}}/cats/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Котёнок\",\n  \"color\": \"#ffffff\",\n  \"birth_year\": 2018\n}"
+            },
+            "description": "validate(): имя 'Котёнок' + возраст > 3 лет. Ошибка на уровне объекта (non_field_errors). Ожидаем 400."
+          }
+        },
+        {
+          "name": "4.2 Котёнок до 3 лет → 201 (успех)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key":"Content-Type","value":"application/json"},
+              {"key":"Authorization","value":"Token {{token_user1}}"}
+            ],
+            "url": "{{base_url}}/cats/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Котёнок\",\n  \"color\": \"#ffffff\",\n  \"birth_year\": 2024\n}"
+            },
+            "description": "validate(): имя 'Котёнок', возраст ≤ 3 лет — валидация проходит. Ожидаем 201."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Права доступа (IsOwnerOrReadOnly)",
+      "item": [
+        {
+          "name": "5.1 user2: список котов — видит только своих",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "var json = pm.response.json();",
+                  "pm.test('У user2 нет котов user1', () => {",
+                  "  pm.expect(json.count).to.equal(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key":"Authorization","value":"Token {{token_user2}}"}
+            ],
+            "url": "{{base_url}}/cats/",
+            "description": "get_queryset фильтрует по owner. user2 видит только своих котов (0 штук). Ожидаем count=0."
+          }
+        },
+        {
+          "name": "5.2 user2 редактирует кота user1 → 403 или 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 или 404 (нет доступа)', () => {",
+                  "  pm.expect([403, 404]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {"key":"Content-Type","value":"application/json"},
+              {"key":"Authorization","value":"Token {{token_user2}}"}
+            ],
+            "url": "{{base_url}}/cats/{{cat_id}}/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Взломанный кот\"\n}"
+            },
+            "description": "IsOwnerOrReadOnly + get_queryset: user2 не может изменить кота user1. Ожидаем 403 или 404."
+          }
+        },
+        {
+          "name": "5.3 user1 редактирует своего кота → 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "var json = pm.response.json();",
+                  "pm.test('Имя обновилось', () => pm.expect(json.name).to.equal('Мурзик Обновлённый'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {"key":"Content-Type","value":"application/json"},
+              {"key":"Authorization","value":"Token {{token_user1}}"}
+            ],
+            "url": "{{base_url}}/cats/{{cat_id}}/",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Мурзик Обновлённый\"\n}"
+            },
+            "description": "user1 редактирует своего кота. Ожидаем 200."
+          }
+        },
+        {
+          "name": "5.4 user2 удаляет кота user1 → 403 или 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 или 404', () => {",
+                  "  pm.expect([403, 404]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {"key":"Authorization","value":"Token {{token_user2}}"}
+            ],
+            "url": "{{base_url}}/cats/{{cat_id}}/",
+            "description": "IsOwnerOrReadOnly: user2 не может удалить кота user1. Ожидаем 403/404."
+          }
+        },
+        {
+          "name": "5.5 user1 удаляет своего кота → 204",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {"key":"Authorization","value":"Token {{token_user1}}"}
+            ],
+            "url": "{{base_url}}/cats/{{cat_id}}/",
+            "description": "user1 удаляет своего кота. Ожидаем 204."
+          }
+        }
+      ]
+    }
+  ]
+}
