@@ -37,9 +37,14 @@ services:
   gateway:
     build:
       context: ./nginx
-    container_name: gateway
-    ports:
-      - "80:80"
+    container_name: kitty-gateway
+    #ports:
+    #  - "80:80"
+    expose:
+      - "80"
+    networks:
+      - default
+      - shared
     volumes:
       - static:/vol/static
       - media:/vol/media
@@ -51,3 +56,7 @@ volumes:
   static:
   media:
   pg_data:
+
+networks:
+  shared:
+    external: true
