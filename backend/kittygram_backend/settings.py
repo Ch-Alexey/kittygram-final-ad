@@ -100,10 +100,15 @@ USE_TZ = True
 
 ASGI_APPLICATION = "kittygram_backend.routing.application"
 
-STATIC_URL = '/static/'
-STATIC_ROOT = '/vol/static'
+# Django работает за префиксом /kittygram
+FORCE_SCRIPT_NAME = '/kittygram'
 
-MEDIA_URL = '/media/'
+# URL для статики и медиа
+STATIC_URL = '/kittygram/static/'
+MEDIA_URL = '/kittygram/media/'
+
+# Корневые папки
+STATIC_ROOT = '/vol/static'
 MEDIA_ROOT = '/vol/media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
