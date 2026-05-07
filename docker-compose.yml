@@ -1,5 +1,5 @@
 services:
-  db:
+ # db:
     image: postgres:13
     container_name: db
     env_file:
