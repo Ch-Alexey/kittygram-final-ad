@@ -1,7 +1,7 @@
 FROM python:3.11-slim-bullseye
 
 # Устанавливаем системные зависимости и корректное время
-fghjk
+
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     build-essential \
