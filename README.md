@@ -295,13 +295,6 @@ pre-commit install
 6. Отправьте: `git push origin feature/your-feature`
 7. Создайте Pull Request
 
-
-## Автор
-
-**Ваше Имя**
-- GitHub: [@1Oblivious1](https://github.com/1Oblivious1)
-- Email: vitalikmerzlyackov@yandex.ru | merzlyakov_vitaliy_05@mail.ru
-
 ## Благодарности
 
 - Yandex Practicum за образовательную программу
